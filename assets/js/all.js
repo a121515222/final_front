@@ -4,7 +4,9 @@
 var showProductlist = document.querySelector('.js-showProwlist');
 var productlistCategory = document.querySelector('.js-productCategory');
 var cartTable = document.querySelector('.js-carts');
+var showCartEmpty = document.querySelector('.js-cartEmpty');
 var totalPrice = document.querySelector('.js-price');
+var showPrice = document.querySelector('.js-shoePrice');
 var delAllCarts = document.querySelector('.js-delAll');
 var errormessage = document.querySelector('.js-userinfo');
 var userinfo = document.querySelectorAll('.js-userinfo .userdata');
@@ -67,6 +69,21 @@ function selPorduct() {
   })["catch"](function (error) {
     console.log(error);
   });
+} //顯示購物車是否為空，如果購物車有東西開啟table與刪除所有按鈕
+
+
+function showCartCompone(data) {
+  if (data.length !== 0) {
+    cartTable.classList.remove('d-none');
+    showPrice.classList.remove('d-none');
+    delAllCarts.classList.remove('d-none');
+    showCartEmpty.classList.add('d-none');
+  } else {
+    cartTable.classList.add('d-none');
+    showPrice.classList.add('d-none');
+    delAllCarts.classList.add('d-none');
+    showCartEmpty.classList.remove('d-none');
+  }
 } //取得購物車
 
 
@@ -81,6 +98,7 @@ function getCartsList() {
 
 
 function renderCart(data) {
+  showCartCompone(data.carts);
   var content = "<thead><tr><th scope=\"col\">\u54C1\u9805</th><th scope=\"col\">\u55AE\u50F9</th><th scope=\"col\">\u6578\u91CF</th><th scope=\"col\">\u91D1\u984D</th><th scope=\"col\"></th></tr></thead><tbody>";
   var contentTail = "</tbody>";
   data.carts.forEach(function (item) {
@@ -93,17 +111,34 @@ function renderCart(data) {
 
 function addCart(e) {
   e.preventDefault();
+  var cartdata = null;
   var sentdata = {
     "data": {
       "productId": "",
       "quantity": 1
     }
   };
-  sentdata.data.productId = e.target.dataset.id;
-  axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts"), sentdata).then(function (response) {
-    renderCart(response.data);
-  })["catch"](function (error) {
-    console.log(error);
+  axios.get("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts")).then(function (response) {
+    cartdata = response.data.carts; //console.log(cartdata)
+    //比較購物車數量如果已在購物車就加數量，如果不在購物車則加入
+
+    cartdata.forEach(function (item) {
+      if (item.product.id.indexOf(e.target.dataset.id) !== -1) {
+        sentdata.data.productId = e.target.dataset.id;
+        sentdata.data.quantity = item.quantity + 1;
+        console.log(sentdata.data.quantity);
+      } else if (item.product.id.indexOf(e.target.dataset.id) === -1) {
+        sentdata.data.productId = e.target.dataset.id;
+      }
+
+      ;
+    });
+    console.log(sentdata.data.quantity);
+    axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts"), sentdata).then(function (response) {
+      renderCart(response.data);
+    })["catch"](function (error) {
+      console.log(error);
+    });
   });
 } //刪除購物車
 
@@ -182,16 +217,16 @@ function getUserInfo(e) {
         sentUserData.data.user[i] = item.value;
       }
     });
-  });
-  console.log(sentUserData); //console.log(sentUserData)
+  }); //console.log(sentUserData)
+  //console.log(sentUserData)
 
   displayError();
 
   if (!displayError()) {
     axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/orders\n    "), sentUserData).then(function (response) {
       if (response.data.status === true) {
-        alert('訂單已成功送出，感謝您的訂購');
-        console.log(response.data);
+        //alert('訂單已成功送出，感謝您的訂購')
+        //console.log(response.data)
         userform.reset();
         getCartsList();
       }
@@ -219,13 +254,16 @@ function displayError() {
       },
       format: {
         pattern: /\d{9,10}/,
-        flags: "i",
         message: "請輸入純數字與完整的電話號碼"
       }
     },
     email: {
       presence: {
         message: "必填欄位"
+      },
+      format: {
+        pattern: /^([a-zA-Z0-9_\.\-\+])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/,
+        message: "請輸入正確的email格式"
       }
     },
     address: {
@@ -251,6 +289,8 @@ function displayError() {
       } else {
         errorSapn[index].textContent = "";
       }
+    } else {
+      errorSapn[index].textContent = "";
     }
   });
   return errorMessage;
