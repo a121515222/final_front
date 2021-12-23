@@ -73,12 +73,13 @@ function selPorduct() {
 
 
 function showCartCompone(data) {
-  if (data.length !== 0) {
+  //console.log(data)
+  if (data.length > 0) {
     cartTable.classList.remove('d-none');
     showPrice.classList.remove('d-none');
     delAllCarts.classList.remove('d-none');
     showCartEmpty.classList.add('d-none');
-  } else {
+  } else if (data.length === 0) {
     cartTable.classList.add('d-none');
     showPrice.classList.add('d-none');
     delAllCarts.classList.add('d-none');
@@ -98,6 +99,7 @@ function getCartsList() {
 
 
 function renderCart(data) {
+  //console.log(data)
   showCartCompone(data.carts);
   var content = "<thead><tr><th scope=\"col\">\u54C1\u9805</th><th scope=\"col\">\u55AE\u50F9</th><th scope=\"col\">\u6578\u91CF</th><th scope=\"col\">\u91D1\u984D</th><th scope=\"col\"></th></tr></thead><tbody>";
   var contentTail = "</tbody>";
@@ -111,7 +113,7 @@ function renderCart(data) {
 
 function addCart(e) {
   e.preventDefault();
-  var cartdata = null;
+  var cartdata = "";
   var sentdata = {
     "data": {
       "productId": "",
@@ -119,26 +121,35 @@ function addCart(e) {
     }
   };
   axios.get("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts")).then(function (response) {
-    cartdata = response.data.carts; //console.log(cartdata)
-    //比較購物車數量如果已在購物車就加數量，如果不在購物車則加入
+    cartdata = response.data.carts; //比較購物車數量如果已在購物車就加數量，如果不在購物車則加入
 
-    cartdata.forEach(function (item) {
-      if (item.product.id.indexOf(e.target.dataset.id) !== -1) {
-        sentdata.data.productId = e.target.dataset.id;
-        sentdata.data.quantity = item.quantity + 1;
-        console.log(sentdata.data.quantity);
-      } else if (item.product.id.indexOf(e.target.dataset.id) === -1) {
-        sentdata.data.productId = e.target.dataset.id;
-      }
+    if (cartdata.length === 0) {
+      sentdata.data.productId = e.target.dataset.id;
+      axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts"), sentdata).then(function (response) {
+        //console.log(sentdata)
+        renderCart(response.data);
+      })["catch"](function (error) {
+        console.log(error);
+      });
+    } else {
+      cartdata.forEach(function (item) {
+        if (item.product.id.indexOf(e.target.dataset.id) !== -1) {
+          sentdata.data.productId = e.target.dataset.id;
+          sentdata.data.quantity = item.quantity + 1;
+          console.log(sentdata.data.quantity);
+        } else {
+          sentdata.data.productId = e.target.dataset.id;
+        }
 
-      ;
-    });
-    console.log(sentdata.data.quantity);
-    axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts"), sentdata).then(function (response) {
-      renderCart(response.data);
-    })["catch"](function (error) {
-      console.log(error);
-    });
+        ;
+      });
+      console.log(sentdata.data);
+      axios.post("https://livejs-api.hexschool.io/api/livejs/v1/customer/".concat(apiPath, "/carts"), sentdata).then(function (response) {
+        renderCart(response.data);
+      })["catch"](function (error) {
+        console.log(error);
+      });
+    }
   });
 } //刪除購物車
 
