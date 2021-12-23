@@ -3,7 +3,9 @@
 const showProductlist = document.querySelector('.js-showProwlist');
 const productlistCategory = document.querySelector('.js-productCategory');
 const cartTable = document.querySelector('.js-carts');
+const showCartEmpty = document.querySelector('.js-cartEmpty');
 const totalPrice = document.querySelector('.js-price');
+const showPrice = document.querySelector('.js-shoePrice');
 const delAllCarts = document.querySelector('.js-delAll');
 const errormessage = document.querySelector('.js-userinfo');
 const userinfo = document.querySelectorAll('.js-userinfo .userdata');
@@ -16,8 +18,8 @@ const apiPath = 'chun-chia'
 
 //功能
 function init() {
-  getPorductList()
-  getCartsList()
+  getPorductList();
+  getCartsList();
 }
 
 //取得產品列表
@@ -64,18 +66,33 @@ function selPorduct() {
 
     let data = null;
     data = response.data.products.filter((item) => {
-      if(productlistCategory.value==="all"){
+      if (productlistCategory.value === "all") {
         return item
       }
-     else if (item.category === productlistCategory.value) {
+      else if (item.category === productlistCategory.value) {
         return item
       }
-      
+
     })
     renderProductList(data)
 
   }).catch((error) => { console.log(error) });
 
+}
+//顯示購物車是否為空，如果購物車有東西開啟table與刪除所有按鈕
+function showCartCompone(data) {
+  if (data.length !== 0) {
+    cartTable.classList.remove('d-none');
+    showPrice.classList.remove('d-none');
+    delAllCarts.classList.remove('d-none');
+    showCartEmpty.classList.add('d-none');
+  }
+  else {
+    cartTable.classList.add('d-none');
+    showPrice.classList.add('d-none');
+    delAllCarts.classList.add('d-none');
+    showCartEmpty.classList.remove('d-none');
+  }
 }
 //取得購物車
 function getCartsList() {
@@ -83,11 +100,11 @@ function getCartsList() {
 
     //console.log(response.data.carts)
     renderCart(response.data)
-
   }).catch((error) => { console.log(error) });
 }
 //渲染購物車
 function renderCart(data) {
+  showCartCompone(data.carts)
   let content = `<thead><tr><th scope="col">品項</th><th scope="col">單價</th><th scope="col">數量</th><th scope="col">金額</th><th scope="col"></th></tr></thead><tbody>`;
   let contentTail = `</tbody>`;
 
@@ -106,22 +123,46 @@ function renderCart(data) {
 
   totalPrice.textContent = data.finalTotal;
   //console.log(content + contentTail)
+
 }
 
 //加入購物車
 
 function addCart(e) {
   e.preventDefault();
+
+  let cartdata = null;
   let sentdata = {
     "data": {
       "productId": "",
       "quantity": 1
     }
-  }
-  sentdata.data.productId = e.target.dataset.id
-  axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${apiPath}/carts`, sentdata).then((response) => {
-    renderCart(response.data)
-  }).catch((error) => { console.log(error) })
+  };
+  axios.get(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${apiPath}/carts`).then((response) => {
+    
+
+    cartdata = response.data.carts;
+    //console.log(cartdata)
+    //比較購物車數量如果已在購物車就加數量，如果不在購物車則加入
+    cartdata.forEach((item) => {
+      if (item.product.id.indexOf(e.target.dataset.id) !== -1) {
+        sentdata.data.productId = e.target.dataset.id;
+        sentdata.data.quantity = item.quantity + 1;
+        console.log(sentdata.data.quantity)
+      }
+      else if(item.product.id.indexOf(e.target.dataset.id) === -1){
+        sentdata.data.productId = e.target.dataset.id;
+      };
+    })
+  
+    console.log(sentdata.data.quantity);
+    axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${apiPath}/carts`, sentdata).then((response) => {
+      renderCart(response.data)
+    }).catch((error) => { console.log(error) })
+  })
+
+
+
 
 }
 //刪除購物車
@@ -134,11 +175,11 @@ function delCart(e) {
   }
 }
 //刪除所有購物車
-function delAllCart(e){
+function delAllCart(e) {
   e.preventDefault()
   axios.delete(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${apiPath}/carts`).then((response) => {
-      renderCart(response.data)
-    }).catch((error) => { console.log(error) })
+    renderCart(response.data)
+  }).catch((error) => { console.log(error) })
 }
 //購物車數量增減
 function adjustCartNumber(e) {
@@ -192,21 +233,21 @@ function getUserInfo(e) {
       }
     })
   })
-  console.log(sentUserData)
+  //console.log(sentUserData)
   //console.log(sentUserData)
   displayError()
-  if(!displayError()){
+  if (!displayError()) {
     axios.post(`https://livejs-api.hexschool.io/api/livejs/v1/customer/${apiPath}/orders
-    `,sentUserData).then((response)=>{
-      if(response.data.status===true){
-        alert('訂單已成功送出，感謝您的訂購')
-        console.log(response.data)
+    `, sentUserData).then((response) => {
+      if (response.data.status === true) {
+        //alert('訂單已成功送出，感謝您的訂購')
+        //console.log(response.data)
         userform.reset()
         getCartsList()
       }
-    }).catch((error)=>{
+    }).catch((error) => {
       console.log(error)
-      if(error){
+      if (error) {
         alert('購物車沒有東西或系統出錯，請稍後在試。')
       }
     })
@@ -214,7 +255,7 @@ function getUserInfo(e) {
 }
 
 //validate.js套件
-function displayError(){
+function displayError() {
   const constraints = {
     name: {
       presence: {
@@ -226,14 +267,16 @@ function displayError(){
         message: "必填欄位"
       }, format: {
         pattern: /\d{9,10}/,
-        flags: "i",
         message: "請輸入純數字與完整的電話號碼"
       }
     },
     email: {
       presence: {
         message: "必填欄位"
-      },
+      }, format: {
+        pattern: /^([a-zA-Z0-9_\.\-\+])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/,
+        message: "請輸入正確的email格式"
+      }
     },
     address: {
       presence: {
@@ -250,17 +293,20 @@ function displayError(){
   let errorMessage = validate(errormessage, constraints);
   //console.log(errorMessage)
   //顯示錯誤訊息
-  
-  errorSapn.forEach((item,index)=>{
-    
-    if(errorMessage){
-      const errorObjkey =  Object.keys(errorMessage);
-      if(errorObjkey.indexOf(item.getAttribute('error'))!==-1){
+
+  errorSapn.forEach((item, index) => {
+
+    if (errorMessage) {
+      const errorObjkey = Object.keys(errorMessage);
+      if (errorObjkey.indexOf(item.getAttribute('error')) !== -1) {
         errorSapn[index].textContent = errorMessage[item.getAttribute('error')][0]
       }
-      else{
+      else {
         errorSapn[index].textContent = "";
       }
+    }
+    else {
+      errorSapn[index].textContent = "";
     }
   })
   return errorMessage
@@ -274,4 +320,4 @@ showProductlist.addEventListener('click', addCart, false);
 cartTable.addEventListener('click', adjustCartNumber, false);
 cartTable.addEventListener('click', delCart, false);
 sendform.addEventListener('click', getUserInfo, false);
-delAllCarts.addEventListener('click',delAllCart,false);
+delAllCarts.addEventListener('click', delAllCart, false);
